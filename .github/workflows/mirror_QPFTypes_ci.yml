@@ -1,0 +1,41 @@
+name: Mirror subfolder QPFTypes
+# only trigger the action when a push happens in main and changes happens in directory QPFTypes
+on: 
+  push: 
+    branches: [main]
+    paths: 
+      - 'QPFTypes/**' 
+
+# avoid two runs pushing at the same time
+concurrency:
+    group: "mirror-QPFTypes"
+    cancel-in-progress: false 
+
+jobs: 
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout full history
+          uses: actions/checkout@v4
+          with:
+            ref: main 
+            fetch-depth: 0 # fetch all commit history for filtering
+            
+        - name: Install git-filter-repo
+          run: pipx install git-filter-repo
+
+        - name: Filter commits related to subfolder only
+          run: git filter-repo --subdirectory-filter QPFTypes --force 
+
+        - name: Load SSH key
+          uses: webfactory/ssh-agent@v0.9.0
+          with:
+            ssh-private-key: ${{secrets.MIRROR_DEPLOY_KEY}}
+
+        - name: Push updated history to mirror repo
+        # overwrite history even if it differss using --force
+          run: | 
+            git remote add mirror git@github.com:Alicexiaoshuokeizer/Coinductive.git
+            git push mirror main --force 
+
+
